@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 // Build stages: turn modules on as the hardware arrives.
 // ---------------------------------------------------------------------------
-#define USE_DISPLAY   0   // stage 2: SH1106 OLED
+#define USE_DISPLAY   1   // stage 2: SH1106 OLED
 #define USE_DFPLAYER  0   // stage 3: DFPlayer Mini (0 = simulated player)
 
 // 1 = verbose debug logging on Serial. Errors are always printed.
@@ -48,7 +48,21 @@ constexpr uint8_t PIN_DF_TX = 11;   // Uno TX -> 1k resistor -> DFPlayer RX
 constexpr uint8_t VOLUME_MAX     = 30;
 constexpr uint8_t VOLUME_DEFAULT = 20;  // higher can brown out a USB-powered Uno
 
+// After the last track, go back to track 1 (true) or stop (false).
+constexpr bool LOOP_PLAYLIST = true;
+
+// Simulated player (USE_DFPLAYER 0): fake tracks so the UI can be tested.
+constexpr uint16_t SIM_TRACK_COUNT = 12;
+constexpr uint32_t SIM_TRACK_MS    = 8000;  // each fake "song" lasts 8 s
+// Show an error screen for testing: 0 none, 1 no response, 2 no files,
+// 3 card removed.
+#define SIM_FORCE_ERROR 0
+
 // ---------------------------------------------------------------------------
 // OLED (used from stage 2)
 // ---------------------------------------------------------------------------
-constexpr uint8_t OLED_I2C_ADDR = 0x3C;  // 7-bit address; some boards use 0x3D
+constexpr uint8_t  OLED_I2C_ADDR  = 0x3C;    // 7-bit address; some boards use 0x3D
+constexpr uint32_t OLED_I2C_CLOCK = 400000;  // 400 kHz: ~4x faster redraws than default
+// 1.3" boards are usually SH1106. If the image is shifted 2 px with a stripe
+// of noise at one edge, yours is really an SSD1306: set this to 1.
+#define OLED_IS_SSD1306 0
