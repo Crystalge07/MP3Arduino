@@ -84,15 +84,21 @@ void Player::update(uint32_t now) {
 
 #if USE_DFPLAYER
   // available() only decodes bytes that have already arrived; it never waits.
+  // Each event gets a fresh millis(), not `now`: a button earlier in this
+  // pass, or an earlier event in this loop, may have started a track and
+  // stamped _trackStartedAt with a time later than `now`. `now - later`
+  // wraps to ~4 billion and would defeat the duplicate-"finished" guard.
   while (df.available()) {
     uint8_t type = df.readType();
     uint16_t value = df.read();
-    handleEvent(type, value, now);
+    handleEvent(type, value, millis());
   }
 #else
   // A real DFPlayer reports "finished" over serial; here we fake it by time.
+  // millis(), not `now`, for the same reason as above: a button press this
+  // pass may have set _simResumedAt after `now` was read.
   if (_s.status == PS_PLAYING &&
-      _simPlayedMs + (now - _simResumedAt) >= SIM_TRACK_MS) {
+      _simPlayedMs + (millis() - _simResumedAt) >= SIM_TRACK_MS) {
     DBGLN(F("[player] track finished"));
     onTrackFinished();
   }
