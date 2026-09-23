@@ -24,7 +24,7 @@ static void handleButton(ButtonEvent ev) {
     case BTN_PREV:      player.previous();   break;
     case BTN_VOL_UP:    player.volumeUp();   break;
     case BTN_VOL_DOWN:  player.volumeDown(); break;
-    case BTN_PLAY_LONG: DBGLN(F("EQ: coming later")); break;
+    case BTN_PLAY_LONG: player.cycleEq();    break;
     default: break;
   }
 }

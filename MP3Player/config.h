@@ -29,7 +29,7 @@ constexpr uint8_t PIN_BTN_VOL_DOWN = 6;
 // button still double-triggers; 50 still feels instant.
 constexpr uint16_t BUTTON_DEBOUNCE_MS = 25;
 
-// Holding Play this long sends BTN_PLAY_LONG (EQ cycling, later) instead of
+// Holding Play this long sends BTN_PLAY_LONG (cycles EQ) instead of
 // play/pause. With this on, Play's short press fires on release rather than
 // on press, since it can't know it was short until you let go.
 #define PLAY_LONG_PRESS 1
@@ -60,6 +60,10 @@ constexpr uint16_t TRACK_COUNT_OVERRIDE = 0;
 
 constexpr uint8_t VOLUME_MAX     = 30;
 constexpr uint8_t VOLUME_DEFAULT = 20;  // higher can brown out a USB-powered Uno
+
+// DFPlayer EQ preset at boot: 0 Normal, 1 Pop, 2 Rock, 3 Jazz, 4 Classic,
+// 5 Bass. Long-press Play cycles through them. (Some clones ignore EQ.)
+constexpr uint8_t EQ_DEFAULT = 0;
 
 // After the last track, go back to track 1 (true) or stop (false).
 constexpr bool LOOP_PLAYLIST = true;

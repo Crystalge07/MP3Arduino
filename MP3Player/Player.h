@@ -23,6 +23,7 @@ struct PlayerState {
   uint16_t    track;        // 1-based
   uint16_t    trackCount;
   uint8_t     volume;
+  uint8_t     eq;           // 0..EQ_COUNT-1, see Player::eqName()
   PlayStatus  status;
   PlayerError error;
   bool        simulated;
@@ -44,9 +45,12 @@ public:
   void previous();
   void volumeUp();
   void volumeDown();
+  void cycleEq();
 
   const PlayerState &state() const { return _s; }
 
+  static constexpr uint8_t EQ_COUNT = 6;
+  static const __FlashStringHelper *eqName(uint8_t eq);
   static const __FlashStringHelper *errorTitle(PlayerError e);
   static const __FlashStringHelper *errorHint(PlayerError e, uint8_t line);
 
@@ -58,7 +62,7 @@ private:
   void setError(PlayerError e);
   void changed();
 
-  PlayerState _s = { 1, 0, VOLUME_DEFAULT, PS_STOPPED, PE_NONE, !USE_DFPLAYER, 0 };
+  PlayerState _s = { 1, 0, VOLUME_DEFAULT, EQ_DEFAULT, PS_STOPPED, PE_NONE, !USE_DFPLAYER, 0 };
 
   uint32_t _trackStartedAt = 0;
   bool     _reconnectPending = false;   // card reinserted: connect() soon

@@ -75,16 +75,19 @@ static void drawStatusIcon(PlayStatus st) {
 static void drawMain(const PlayerState &s) {
   char num[6], count[7];
 
-  // Top bar: status on the left, SIM marker on the right.
+  // Top bar: status on the left, EQ preset right-aligned, SIM marker between.
   drawStatusIcon(s.status);
   u8g2.setFont(FONT_SMALL);
   u8g2.setCursor(10, 8);
   u8g2.print(s.status == PS_PLAYING ? F("PLAYING") :
              s.status == PS_PAUSED  ? F("PAUSED")  : F("READY"));
   if (s.simulated) {
-    u8g2.setCursor(113, 8);
+    u8g2.setCursor(62, 8);
     u8g2.print(F("SIM"));
   }
+  const __FlashStringHelper *eq = Player::eqName(s.eq);
+  u8g2.setCursor(128 - 5 * strlen_P((PGM_P)eq), 8);   // F() strings live in flash
+  u8g2.print(eq);
   u8g2.drawHLine(0, 11, 128);
 
   // Centre: "TRACK", then a big track number followed by a small "/count".

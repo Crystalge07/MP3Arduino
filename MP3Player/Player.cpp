@@ -61,6 +61,7 @@ void Player::connect() {
   // be playing the old track; stop it so the state matches what we show.
   df.stop();
   df.volume(_s.volume);
+  df.EQ(_s.eq);
   DBG(F("[player] DFPlayer ok, "));
 #else
   _s.trackCount = SIM_TRACK_COUNT;
@@ -206,6 +207,16 @@ void Player::setVolume(uint8_t v) {
   changed();
 }
 
+void Player::cycleEq() {
+  _s.eq = (_s.eq + 1) % EQ_COUNT;
+#if USE_DFPLAYER
+  df.EQ(_s.eq);   // the numbering matches DFPLAYER_EQ_NORMAL..DFPLAYER_EQ_BASS
+#endif
+  DBG(F("[player] EQ "));
+  DBGLN(eqName(_s.eq));
+  changed();
+}
+
 void Player::playTrack(uint16_t track) {
   _s.track = track;
   _s.status = PS_PLAYING;
@@ -253,6 +264,18 @@ void Player::changed() {
       _s.status == PS_PAUSED  ? F(" paused")  : F(" stopped"));
   DBG(F(", vol "));
   DBGLN(_s.volume);
+}
+
+// Shown in the OLED's top bar, so at most 7 characters.
+const __FlashStringHelper *Player::eqName(uint8_t eq) {
+  switch (eq) {
+    case 1:  return F("POP");
+    case 2:  return F("ROCK");
+    case 3:  return F("JAZZ");
+    case 4:  return F("CLASSIC");
+    case 5:  return F("BASS");
+    default: return F("NORMAL");
+  }
 }
 
 // Titles fit the OLED at 6 px/char (<= 16 chars); hints at 5 px (<= 25 chars).
