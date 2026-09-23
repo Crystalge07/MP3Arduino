@@ -141,10 +141,7 @@ void Player::handleEvent(uint8_t type, uint16_t value, uint32_t now) {
       DBG(F("[df] error "));
       DBGLN(value);
       if ((value == FileIndexOut || value == FileMismatch) && _s.status == PS_PLAYING) {
-        // Missing track: a gap in the numbering, or the files aren't in /mp3.
-        // Skip it, but give up after 3 in a row instead of looping forever.
-        if (++_playErrors >= 3) setError(PE_NO_FILES);
-        else next();
+        onTrackMissing();
       }
       break;
 
@@ -156,6 +153,42 @@ void Player::handleEvent(uint8_t type, uint16_t value, uint32_t now) {
       break;
   }
 }
+
+// The DFPlayer has no /mp3/NNNN.mp3 for the current track. The track count
+// it reported covers every file on the card, hidden macOS "._" files and
+// all, so it is often too high. Running into a missing number going forward,
+// or right after wrapping back from track 1 to the last one, means the real
+// playlist ends before it: shrink the count and carry on.
+void Player::onTrackMissing() {
+  uint16_t t = _s.track;
+  if (t == 1) {                  // /mp3/0001.mp3 must exist
+    setError(PE_NO_FILES);
+    return;
+  }
+  if (_move == MOVE_PREV && t < _s.trackCount) {
+    // A gap in the numbering: skip it, but give up after 3 in a row.
+    if (++_playErrors >= 3) setError(PE_NO_FILES);
+    else next();
+    return;
+  }
+
+  _s.trackCount = t - 1;
+  Serial.print(F("WARN: no /mp3 file for track "));
+  Serial.print(t);
+  Serial.print(F(", playlist is now 1-"));
+  Serial.print(_s.trackCount);
+  Serial.println(F(" (extra files on the card?)"));
+
+  if (_move == MOVE_PREV) {
+    playTrack(t - 1, MOVE_PREV);   // land on the real last track
+  } else if (_move == MOVE_AUTO && !LOOP_PLAYLIST) {
+    _s.track = t - 1;              // ran off the end: stop, as onTrackFinished() does
+    _s.status = PS_STOPPED;
+    changed();
+  } else {
+    playTrack(1, _move);           // wrap, as next() does at the end
+  }
+}
 #endif
 
 void Player::togglePlay() {
@@ -165,7 +198,7 @@ void Player::togglePlay() {
   }
   switch (_s.status) {
     case PS_STOPPED:
-      playTrack(_s.track);
+      playTrack(_s.track, MOVE_PLAY);
       return;
     case PS_PLAYING:
 #if USE_DFPLAYER
@@ -189,12 +222,12 @@ void Player::togglePlay() {
 
 void Player::next() {
   if (_s.error != PE_NONE) return;
-  playTrack(_s.track >= _s.trackCount ? 1 : _s.track + 1);
+  playTrack(_s.track >= _s.trackCount ? 1 : _s.track + 1, MOVE_NEXT);
 }
 
 void Player::previous() {
   if (_s.error != PE_NONE) return;
-  playTrack(_s.track <= 1 ? _s.trackCount : _s.track - 1);
+  playTrack(_s.track <= 1 ? _s.trackCount : _s.track - 1, MOVE_PREV);
 }
 
 void Player::volumeUp() {
@@ -223,9 +256,10 @@ void Player::cycleEq() {
   changed();
 }
 
-void Player::playTrack(uint16_t track) {
+void Player::playTrack(uint16_t track, Move how) {
   _s.track = track;
   _s.status = PS_PLAYING;
+  _move = how;
   _trackStartedAt = millis();
 #if USE_DFPLAYER
   // Plays /mp3/NNNN.mp3 chosen by file name. (play(n) and next() would go by
@@ -239,8 +273,10 @@ void Player::playTrack(uint16_t track) {
 }
 
 void Player::onTrackFinished() {
-  if (_s.track < _s.trackCount || LOOP_PLAYLIST) {
-    next();
+  if (_s.track < _s.trackCount) {
+    playTrack(_s.track + 1, MOVE_AUTO);
+  } else if (LOOP_PLAYLIST) {
+    playTrack(1, MOVE_AUTO);
   } else {
     _s.status = PS_STOPPED;   // end of playlist: next Play restarts this track
     changed();

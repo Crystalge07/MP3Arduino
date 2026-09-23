@@ -55,9 +55,14 @@ public:
   static const __FlashStringHelper *errorHint(PlayerError e, uint8_t line);
 
 private:
-  void playTrack(uint16_t track);
+  // How the current track was reached. Decides what a "file not found"
+  // reply for it means (see onTrackMissing()).
+  enum Move : uint8_t { MOVE_PLAY, MOVE_NEXT, MOVE_PREV, MOVE_AUTO };
+
+  void playTrack(uint16_t track, Move how);
   void setVolume(uint8_t v);
   void onTrackFinished();
+  void onTrackMissing();
   void handleEvent(uint8_t type, uint16_t value, uint32_t now);
   void setError(PlayerError e);
   void changed();
@@ -65,6 +70,7 @@ private:
   PlayerState _s = { 1, 0, VOLUME_DEFAULT, EQ_DEFAULT, PS_STOPPED, PE_NONE, !USE_DFPLAYER, 0 };
 
   uint32_t _trackStartedAt = 0;
+  Move     _move = MOVE_PLAY;
   bool     _reconnectPending = false;   // card reinserted: connect() soon
   uint32_t _reconnectRequestedAt = 0;
   uint8_t  _playErrors = 0;             // "file not found" errors in a row
