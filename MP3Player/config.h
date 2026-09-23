@@ -10,7 +10,7 @@
 // Build stages: turn modules on as the hardware arrives.
 // ---------------------------------------------------------------------------
 #define USE_DISPLAY   1   // stage 2: SH1106 OLED
-#define USE_DFPLAYER  0   // stage 3: DFPlayer Mini (0 = simulated player)
+#define USE_DFPLAYER  1   // stage 3: DFPlayer Mini (0 = simulated player)
 
 // 1 = verbose debug logging on Serial. Errors are always printed.
 #define DEBUG         1
@@ -44,6 +44,19 @@ constexpr uint8_t PIN_DF_TX = 11;   // Uno TX -> 1k resistor -> DFPlayer RX
 // Many clones never answer ACK requests. With ACK on they make every command
 // wait for a reply that never comes. Try 1 only if you have a genuine module.
 #define DF_USE_ACK 0
+
+// The DFPlayer needs time after power-up to mount the SD card before it
+// answers queries (longer with big cards/many files). The boot animation
+// (2.8 s) normally covers this; the wait only matters with USE_DISPLAY 0.
+constexpr uint32_t DF_BOOT_MS = 2000;
+// "Track finished" events arriving this soon after starting a track are
+// duplicates or refer to the interrupted track, and are ignored.
+constexpr uint32_t DF_FINISH_GUARD_MS = 1500;
+// After a card is reinserted, wait this long before reading it again.
+constexpr uint32_t DF_CARD_MOUNT_MS = 1500;
+// 0 = ask the DFPlayer how many tracks there are. Some clones report a wrong
+// count; if yours does, put the real number of files here.
+constexpr uint16_t TRACK_COUNT_OVERRIDE = 0;
 
 constexpr uint8_t VOLUME_MAX     = 30;
 constexpr uint8_t VOLUME_DEFAULT = 20;  // higher can brown out a USB-powered Uno

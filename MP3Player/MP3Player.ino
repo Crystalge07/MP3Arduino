@@ -43,6 +43,7 @@ void setup() {
     }
   }
 
+  player.begin();    // opens the serial link; the DFPlayer boots meanwhile
   display.begin();   // logs its own error; the player works without it
   display.startBoot(millis());
 }
@@ -55,8 +56,10 @@ void loop() {
   if (booting) {
     // Any press during the animation just skips it.
     while ((ev = buttons.poll()) != BTN_NONE) display.skipBoot();
-    if (display.bootDone()) {
-      player.begin();
+    // The animation doubles as the DFPlayer's start-up time. If it was
+    // skipped, or there's no display, wait out DF_BOOT_MS (without blocking).
+    if (display.bootDone() && now >= DF_BOOT_MS) {
+      player.connect();
       booting = false;
     }
   } else {

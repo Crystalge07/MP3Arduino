@@ -125,9 +125,12 @@ static void drawError(const PlayerState &s) {
 
   u8g2.setFont(FONT_SMALL);
   for (uint8_t i = 0; i < 2; i++) {
-    u8g2.setCursor(0, 40 + 12 * i);
+    u8g2.setCursor(0, 36 + 10 * i);
     u8g2.print(Player::errorHint(s.error, i));
   }
+  u8g2.drawHLine(0, 52, 128);
+  u8g2.setCursor((128 - 19 * 5) / 2, 62);
+  u8g2.print(F("Press Play to retry"));
 }
 
 void Display::update(uint32_t now, const PlayerState &s) {
