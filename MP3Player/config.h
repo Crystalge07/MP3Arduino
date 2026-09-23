@@ -10,7 +10,9 @@
 // Build stages: turn modules on as the hardware arrives.
 // ---------------------------------------------------------------------------
 #define USE_DISPLAY   1   // stage 2: SH1106 OLED
+#ifndef USE_DFPLAYER      // the PC tests (test/Makefile) build both ways with -D
 #define USE_DFPLAYER  1   // stage 3: DFPlayer Mini (0 = simulated player)
+#endif
 
 // 1 = verbose debug logging on Serial. Errors are always printed.
 #define DEBUG         1
