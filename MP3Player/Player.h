@@ -73,7 +73,6 @@ private:
   Move     _move = MOVE_PLAY;
   bool     _reconnectPending = false;   // card reinserted: connect() soon
   uint32_t _reconnectRequestedAt = 0;
-  uint8_t  _playErrors = 0;             // "file not found" errors in a row
 
 #if !USE_DFPLAYER
   uint32_t _simPlayedMs = 0;    // play time before the latest resume

@@ -25,7 +25,6 @@ void Player::connect() {
   _s.status = PS_STOPPED;
   _s.track = 1;
   _reconnectPending = false;
-  _playErrors = 0;
 
 #if USE_DFPLAYER
   // Throw away anything the DFPlayer sent by itself, like the "card online"
@@ -118,7 +117,6 @@ void Player::handleEvent(uint8_t type, uint16_t value, uint32_t now) {
         break;
       }
       DBGLN(F("[df] track finished"));
-      _playErrors = 0;
       onTrackFinished();
       break;
 
@@ -159,6 +157,9 @@ void Player::handleEvent(uint8_t type, uint16_t value, uint32_t now) {
 // all, so it is often too high. Running into a missing number going forward,
 // or right after wrapping back from track 1 to the last one, means the real
 // playlist ends before it: shrink the count and carry on.
+//
+// This always ends: every path either stops, shows an error, shrinks the
+// count, or steps backward toward track 1, whose absence is an error.
 void Player::onTrackMissing() {
   uint16_t t = _s.track;
   if (t == 1) {                  // /mp3/0001.mp3 must exist
@@ -166,9 +167,8 @@ void Player::onTrackMissing() {
     return;
   }
   if (_move == MOVE_PREV && t < _s.trackCount) {
-    // A gap in the numbering: skip it, but give up after 3 in a row.
-    if (++_playErrors >= 3) setError(PE_NO_FILES);
-    else next();
+    // A gap in the numbering: keep going the way the user was going.
+    playTrack(t - 1, MOVE_PREV);
     return;
   }
 
