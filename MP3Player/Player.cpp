@@ -97,6 +97,13 @@ void Player::connect() {
 }
 
 void Player::update(uint32_t now) {
+  // Re-read the clock instead of trusting the caller's `now`: a button
+  // handled earlier in this loop() pass may have started a track (or changed
+  // a setting) and stamped a time *later* than `now`. `now - later` wraps to
+  // ~4 billion, which would let a duplicate "finished" event through (skipping
+  // a track) and save settings instantly instead of after the delay.
+  now = millis();
+
 #if REMEMBER_SETTINGS
   if (_saveDue && now - _changedAt >= SETTINGS_SAVE_MS) save();
 #endif
