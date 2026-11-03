@@ -112,7 +112,6 @@ void Player::handleEvent(uint8_t type, uint16_t value, uint32_t now) {
         break;
       }
       DBGLN(F("[df] track finished"));
-      _playErrors = 0;
       onTrackFinished();
       break;
 
@@ -135,10 +134,7 @@ void Player::handleEvent(uint8_t type, uint16_t value, uint32_t now) {
       DBG(F("[df] error "));
       DBGLN(value);
       if ((value == FileIndexOut || value == FileMismatch) && _s.status == PS_PLAYING) {
-        // Missing track: a gap in the numbering, or the files aren't in /mp3.
-        // Skip it, but give up after 3 in a row instead of looping forever.
-        if (++_playErrors >= 3) setError(PE_NO_FILES);
-        else next();
+        onTrackMissing();
       }
       break;
 
@@ -183,13 +179,68 @@ void Player::togglePlay() {
 
 void Player::next() {
   if (_s.error != PE_NONE) return;
-  playTrack(_s.track >= _s.trackCount ? 1 : _s.track + 1);
+  _playErrors = 0;
+  step(1);
 }
 
 void Player::previous() {
   if (_s.error != PE_NONE) return;
-  playTrack(_s.track <= 1 ? _s.trackCount : _s.track - 1);
+  _playErrors = 0;
+  step(-1);
 }
+
+void Player::step(int8_t dir) {
+  _dir = dir;
+  if (dir > 0) playTrack(_s.track >= _s.trackCount ? 1 : _s.track + 1);
+  else         playTrack(_s.track <= 1 ? _s.trackCount : _s.track - 1);
+}
+
+#if USE_DFPLAYER
+// The DFPlayer said the track we just asked for doesn't exist. Two causes:
+//  - The file count is too high. It counts every file on the card, and macOS
+//    adds hidden ones (._0001.mp3, .Spotlight-V100 ...), so the numbers past
+//    the real last track are missing.
+//  - A gap in the numbering (0003.mp3 deleted).
+// Up to 2 missing in a row are treated as gaps and skipped. A longer run
+// means we're past the real end: the count is corrected to just before the
+// run and playback wraps to track 1 (or back to the real last track).
+void Player::onTrackMissing() {
+  if (_playErrors++ == 0) _firstMissing = _s.track;
+  DBG(F("[player] track "));
+  DBG(_s.track);
+  DBGLN(F(" missing"));
+
+  if (_dir < 0 && _s.track == _s.trackCount) {
+    // Stepped back onto the "last" track and it isn't there: the end is
+    // lower. Shrink the count one at a time until a real track is found.
+    _playErrors = 0;
+    if (--_s.trackCount == 0) { setError(PE_NO_FILES); return; }
+    playTrack(_s.trackCount);
+    return;
+  }
+  if (_playErrors < 3) {
+    step(_dir);
+    return;
+  }
+
+  // 3 in a row. Going forward, the run started at the real end. Going back,
+  // it's a gap we can't get past, so give up.
+  uint16_t realCount = _dir > 0 ? _firstMissing - 1 : 0;
+  if (realCount == 0) { setError(PE_NO_FILES); return; }
+  Serial.print(F("WARN: tracks after "));
+  Serial.print(realCount);
+  Serial.println(F(" missing; using that as the count (hidden files on the card?)"));
+  _s.trackCount = realCount;
+  _playErrors = 0;
+  if (LOOP_PLAYLIST) {
+    playTrack(1);
+  } else {
+    _s.track = 1;
+    _s.status = PS_STOPPED;
+    changed();
+  }
+}
+#endif
 
 void Player::volumeUp() {
   if (_s.volume < VOLUME_MAX) setVolume(_s.volume + 1);
@@ -233,10 +284,12 @@ void Player::playTrack(uint16_t track) {
 }
 
 void Player::onTrackFinished() {
+  _playErrors = 0;
   if (_s.track < _s.trackCount || LOOP_PLAYLIST) {
-    next();
+    step(1);
   } else {
-    _s.status = PS_STOPPED;   // end of playlist: next Play restarts this track
+    _s.track = 1;             // end of playlist: next Play starts from the top
+    _s.status = PS_STOPPED;
     changed();
   }
 }

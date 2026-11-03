@@ -56,6 +56,10 @@ public:
 
 private:
   void playTrack(uint16_t track);
+  void step(int8_t dir);   // one track forward/back, wrapping around
+#if USE_DFPLAYER
+  void onTrackMissing();
+#endif
   void setVolume(uint8_t v);
   void onTrackFinished();
   void handleEvent(uint8_t type, uint16_t value, uint32_t now);
@@ -68,6 +72,8 @@ private:
   bool     _reconnectPending = false;   // card reinserted: connect() soon
   uint32_t _reconnectRequestedAt = 0;
   uint8_t  _playErrors = 0;             // "file not found" errors in a row
+  uint16_t _firstMissing = 0;           // first missing track of that run
+  int8_t   _dir = 1;                    // direction of the last step: +1 or -1
 
 #if !USE_DFPLAYER
   uint32_t _simPlayedMs = 0;    // play time before the latest resume

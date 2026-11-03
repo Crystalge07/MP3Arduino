@@ -57,6 +57,8 @@ constexpr uint32_t DF_CARD_MOUNT_MS = 1500;
 // 0 = ask the DFPlayer how many tracks there are. Some clones report a wrong
 // count; if yours does, put the real number of files here.
 constexpr uint16_t TRACK_COUNT_OVERRIDE = 0;
+// (A count that is too high also fixes itself: once 3 tracks in a row turn
+// out missing, the player assumes the real list ended before them.)
 
 constexpr uint8_t VOLUME_MAX     = 30;
 constexpr uint8_t VOLUME_DEFAULT = 20;  // higher can brown out a USB-powered Uno
@@ -65,7 +67,8 @@ constexpr uint8_t VOLUME_DEFAULT = 20;  // higher can brown out a USB-powered Un
 // 5 Bass. Long-press Play cycles through them. (Some clones ignore EQ.)
 constexpr uint8_t EQ_DEFAULT = 0;
 
-// After the last track, go back to track 1 (true) or stop (false).
+// After the last track, go back to track 1 and keep playing (true), or stop
+// with track 1 ready to play (false).
 constexpr bool LOOP_PLAYLIST = true;
 
 // Simulated player (USE_DFPLAYER 0): fake tracks so the UI can be tested.
