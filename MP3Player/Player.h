@@ -3,6 +3,7 @@
 #pragma once
 #include <Arduino.h>
 #include "config.h"
+#include "Shuffle.h"
 
 enum PlayStatus : uint8_t {
   PS_STOPPED,   // nothing started yet: Play must start a track from the beginning
@@ -27,6 +28,7 @@ struct PlayerState {
   PlayStatus  status;
   PlayerError error;
   bool        simulated;
+  bool        shuffle;
   uint8_t     version;
 };
 
@@ -46,6 +48,7 @@ public:
   void volumeUp();
   void volumeDown();
   void cycleEq();
+  void toggleShuffle();
 
   const PlayerState &state() const { return _s; }
 
@@ -65,15 +68,20 @@ private:
   void handleEvent(uint8_t type, uint16_t value, uint32_t now);
   void setError(PlayerError e);
   void changed();
+  void save();
 
-  PlayerState _s = { 1, 0, VOLUME_DEFAULT, EQ_DEFAULT, PS_STOPPED, PE_NONE, !USE_DFPLAYER, 0 };
+  PlayerState _s = { 1, 0, VOLUME_DEFAULT, EQ_DEFAULT, PS_STOPPED, PE_NONE, !USE_DFPLAYER, false, 0 };
 
   uint32_t _trackStartedAt = 0;
   bool     _reconnectPending = false;   // card reinserted: connect() soon
   uint32_t _reconnectRequestedAt = 0;
-  uint8_t  _playErrors = 0;             // "file not found" errors in a row
+  uint16_t _playErrors = 0;             // "file not found" errors in a row
   uint16_t _firstMissing = 0;           // first missing track of that run
   int8_t   _dir = 1;                    // direction of the last step: +1 or -1
+  Shuffle  _shuf;
+  uint16_t _boots = 0;
+  bool     _saveDue = false;
+  uint32_t _changedAt = 0;
 
 #if !USE_DFPLAYER
   uint32_t _simPlayedMs = 0;    // play time before the latest resume

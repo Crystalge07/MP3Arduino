@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "debug.h"
+#include "Settings.h"
 
 #if USE_DFPLAYER
 #include <SoftwareSerial.h>
@@ -10,6 +11,24 @@ static DFRobotDFPlayerMini df;
 #endif
 
 void Player::begin() {
+#if REMEMBER_SETTINGS
+  Saved sv;
+  if (settingsLoad(sv)) {
+    _s.volume  = sv.volume <= VOLUME_MAX ? sv.volume : VOLUME_DEFAULT;
+    _s.eq      = sv.eq < EQ_COUNT ? sv.eq : EQ_DEFAULT;
+    _s.shuffle = sv.shuffle;
+    _s.track   = sv.track ? sv.track : 1;   // checked against the card in connect()
+    _boots     = sv.boots + 1;
+    DBGLN(F("[player] restored saved settings"));
+  }
+  save();   // records the boot count, so every power-on shuffles differently
+#endif
+  // A floating pin's readings vary a little; mixed with the boot count they
+  // make a seed that differs every power-on.
+  uint32_t seed = _boots;
+  for (uint8_t i = 0; i < 16; i++) seed = seed * 31 + analogRead(PIN_RANDOM_SEED);
+  randomSeed(seed);
+
 #if USE_DFPLAYER
   dfSerial.begin(9600);   // the DFPlayer only speaks 9600 baud
   // doReset = false: send nothing and don't wait. The DFPlayer boots by itself
@@ -23,7 +42,6 @@ void Player::begin() {
 void Player::connect() {
   _s.error = PE_NONE;
   _s.status = PS_STOPPED;
-  _s.track = 1;
   _reconnectPending = false;
   _playErrors = 0;
 
@@ -71,12 +89,18 @@ void Player::connect() {
   }
   DBG(F("[player] simulated, "));
 #endif
+  if (_s.track > _s.trackCount) _s.track = 1;   // saved track not on this card
+  if (_s.shuffle) _shuf.begin(_s.trackCount, _s.track);
   DBG(_s.trackCount);
   DBGLN(F(" tracks"));
   changed();
 }
 
 void Player::update(uint32_t now) {
+#if REMEMBER_SETTINGS
+  if (_saveDue && now - _changedAt >= SETTINGS_SAVE_MS) save();
+#endif
+
   if (_reconnectPending && now - _reconnectRequestedAt >= DF_CARD_MOUNT_MS) {
     connect();
     return;
@@ -191,6 +215,12 @@ void Player::previous() {
 
 void Player::step(int8_t dir) {
   _dir = dir;
+  if (_s.shuffle) {
+    if (dir > 0) _shuf.next();
+    else         _shuf.prev();
+    playTrack(_shuf.track());
+    return;
+  }
   if (dir > 0) playTrack(_s.track >= _s.trackCount ? 1 : _s.track + 1);
   else         playTrack(_s.track <= 1 ? _s.trackCount : _s.track - 1);
 }
@@ -209,6 +239,14 @@ void Player::onTrackMissing() {
   DBG(F("[player] track "));
   DBG(_s.track);
   DBGLN(F(" missing"));
+
+  if (_s.shuffle) {
+    // In shuffled order there's no "end" to detect: just skip. Only after
+    // every position has failed is the card really unusable.
+    if (_playErrors >= _s.trackCount) setError(PE_NO_FILES);
+    else step(_dir);
+    return;
+  }
 
   if (_dir < 0 && _s.track == _s.trackCount) {
     // Stepped back onto the "last" track and it isn't there: the end is
@@ -258,6 +296,16 @@ void Player::setVolume(uint8_t v) {
   changed();
 }
 
+void Player::toggleShuffle() {
+  if (_s.error != PE_NONE) return;
+  _s.shuffle = !_s.shuffle;
+  // The current track becomes the first of the new order.
+  if (_s.shuffle) _shuf.begin(_s.trackCount, _s.track);
+  DBG(F("[player] shuffle "));
+  DBGLN(_s.shuffle ? F("on") : F("off"));
+  changed();
+}
+
 void Player::cycleEq() {
   _s.eq = (_s.eq + 1) % EQ_COUNT;
 #if USE_DFPLAYER
@@ -285,13 +333,20 @@ void Player::playTrack(uint16_t track) {
 
 void Player::onTrackFinished() {
   _playErrors = 0;
-  if (_s.track < _s.trackCount || LOOP_PLAYLIST) {
+  bool atEnd = _s.shuffle ? _shuf.atLast() : _s.track >= _s.trackCount;
+  if (!atEnd || LOOP_PLAYLIST) {
     step(1);
-  } else {
-    _s.track = 1;             // end of playlist: next Play starts from the top
-    _s.status = PS_STOPPED;
-    changed();
+    return;
   }
+  // End of playlist: stop, with the start of the next round ready to play.
+  if (_s.shuffle) {
+    _shuf.next();             // draws a fresh order
+    _s.track = _shuf.track();
+  } else {
+    _s.track = 1;
+  }
+  _s.status = PS_STOPPED;
+  changed();
 }
 
 void Player::setError(PlayerError e) {
@@ -307,8 +362,18 @@ void Player::setError(PlayerError e) {
   changed();
 }
 
+void Player::save() {
+  _saveDue = false;
+#if REMEMBER_SETTINGS
+  Saved sv = { _s.volume, _s.eq, _s.shuffle, _s.track, _boots };
+  settingsSave(sv);
+#endif
+}
+
 void Player::changed() {
   _s.version++;
+  _saveDue = true;            // written by update() once things settle
+  _changedAt = millis();
   DBG(F("[player] track "));
   DBG(_s.track);
   DBG('/');
@@ -316,7 +381,8 @@ void Player::changed() {
   DBG(_s.status == PS_PLAYING ? F(" playing") :
       _s.status == PS_PAUSED  ? F(" paused")  : F(" stopped"));
   DBG(F(", vol "));
-  DBGLN(_s.volume);
+  DBG(_s.volume);
+  DBGLN(_s.shuffle ? F(", shuffle") : F(""));
 }
 
 // Shown in the OLED's top bar, so at most 7 characters.

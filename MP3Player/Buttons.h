@@ -11,6 +11,7 @@ enum ButtonEvent : uint8_t {
   BTN_VOL_UP,
   BTN_VOL_DOWN,
   BTN_PLAY_LONG,   // Play held past LONG_PRESS_MS (replaces BTN_PLAY)
+  BTN_NEXT_LONG,   // Next held past LONG_PRESS_MS (replaces BTN_NEXT)
 };
 
 class Buttons {

@@ -35,6 +35,10 @@ constexpr uint16_t BUTTON_DEBOUNCE_MS = 25;
 #define PLAY_LONG_PRESS 1
 constexpr uint16_t LONG_PRESS_MS = 700;
 
+// Holding Next this long toggles shuffle (BTN_NEXT_LONG). Like Play above,
+// Next then fires on release.
+#define NEXT_LONG_PRESS 1
+
 // ---------------------------------------------------------------------------
 // DFPlayer Mini (used from stage 3)
 // ---------------------------------------------------------------------------
@@ -66,6 +70,15 @@ constexpr uint8_t VOLUME_DEFAULT = 20;  // higher can brown out a USB-powered Un
 // DFPlayer EQ preset at boot: 0 Normal, 1 Pop, 2 Rock, 3 Jazz, 4 Classic,
 // 5 Bass. Long-press Play cycles through them. (Some clones ignore EQ.)
 constexpr uint8_t EQ_DEFAULT = 0;
+
+// Remember volume, EQ, shuffle and the last track across power-offs
+// (stored in the Uno's EEPROM). Saved this long after the last change, so
+// a burst of button presses costs one write.
+#define REMEMBER_SETTINGS 1
+constexpr uint32_t SETTINGS_SAVE_MS = 3000;
+
+// Unconnected analog pin: its noise seeds the shuffle. Leave it floating.
+constexpr uint8_t PIN_RANDOM_SEED = A0;
 
 // After the last track, go back to track 1 and keep playing (true), or stop
 // with track 1 ready to play (false).

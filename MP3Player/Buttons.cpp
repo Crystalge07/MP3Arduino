@@ -8,7 +8,7 @@ static const uint8_t PINS[Buttons::COUNT] = {
 };
 
 static inline bool hasLongPress(uint8_t i) {
-  return PLAY_LONG_PRESS && i == 0;
+  return (PLAY_LONG_PRESS && i == 0) || (NEXT_LONG_PRESS && i == 1);
 }
 
 uint8_t Buttons::begin() {
@@ -60,7 +60,7 @@ void Buttons::update(uint32_t now) {
     if (hasLongPress(i) && b.pressed && !b.longFired &&
         now - b.pressedAt >= LONG_PRESS_MS) {
       b.longFired = true;
-      push(BTN_PLAY_LONG);
+      push(i == 0 ? BTN_PLAY_LONG : BTN_NEXT_LONG);
     }
   }
 }
@@ -90,6 +90,7 @@ const __FlashStringHelper *Buttons::name(ButtonEvent e) {
     case BTN_VOL_UP:    return F("VOL+");
     case BTN_VOL_DOWN:  return F("VOL-");
     case BTN_PLAY_LONG: return F("PLAY (long)");
+    case BTN_NEXT_LONG: return F("NEXT (long)");
     default:            return F("NONE");
   }
 }

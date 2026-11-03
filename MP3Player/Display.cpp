@@ -75,14 +75,18 @@ static void drawStatusIcon(PlayStatus st) {
 static void drawMain(const PlayerState &s) {
   char num[6], count[7];
 
-  // Top bar: status on the left, EQ preset right-aligned, SIM marker between.
+  // Top bar: status on the left, EQ preset right-aligned, SHUF/SIM between.
   drawStatusIcon(s.status);
   u8g2.setFont(FONT_SMALL);
   u8g2.setCursor(10, 8);
   u8g2.print(s.status == PS_PLAYING ? F("PLAYING") :
              s.status == PS_PAUSED  ? F("PAUSED")  : F("READY"));
+  if (s.shuffle) {
+    u8g2.setCursor(50, 8);
+    u8g2.print(F("SHUF"));
+  }
   if (s.simulated) {
-    u8g2.setCursor(62, 8);
+    u8g2.setCursor(74, 8);
     u8g2.print(F("SIM"));
   }
   const __FlashStringHelper *eq = Player::eqName(s.eq);
